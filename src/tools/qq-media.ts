@@ -6,6 +6,7 @@
  */
 import type { Context } from '@deepseek-ai/cordis';
 import type { QQBot } from '@tencent-connect/qqbot-nodejs';
+import { audioFileToSilkBase64 } from '@tencent-connect/qqbot-nodejs/protocol';
 import type { SessionManager } from '../session/index.js';
 import type { DshAgent } from '../session/types.js';
 import type { Logger } from '../types.js';
@@ -29,10 +30,11 @@ interface QQSendMediaArgs {
   file_name?: string;
 }
 
-/** 媒体来源：本地路径或 URL */
+/** 媒体来源：本地路径、URL 或内存 Buffer */
 interface MediaSource {
   localPath?: string;
   url?: string;
+  buffer?: Buffer;
 }
 
 function toJsonSchema(spec: Record<string, { type: string; enum?: string[]; required?: boolean; description?: string }>) {
@@ -72,6 +74,7 @@ export function registerQQMediaTools(
     description: [
       'Send an image, video, voice, or file to the current QQ conversation.',
       'The media source can be a local file path (relative to the agent cwd) or an https URL.',
+      'For voice messages, local audio files such as mp3/flac are automatically transcoded to a QQ-compatible voice format when possible.',
       'Use this when the user asks the bot to send a picture, video, audio, document, or other file.',
     ].join('\n'),
     parameters: toJsonSchema({
@@ -145,9 +148,23 @@ export function registerQQMediaTools(
           case 'video':
             await bot.sendVideo(target, mediaSource, caption ? { content: caption } : undefined);
             break;
-          case 'voice':
-            await bot.sendVoice(target, mediaSource);
+          case 'voice': {
+            let voiceSource = mediaSource;
+            if (mediaSource.localPath) {
+              const silkBase64 = await audioFileToSilkBase64(mediaSource.localPath, undefined, {
+                log: (msg) => logger.info(`[audio-convert] ${msg}`),
+                warn: (msg) => logger.warn(`[audio-convert] ${msg}`),
+                error: (msg) => logger.error(`[audio-convert] ${msg}`),
+              });
+              if (silkBase64) {
+                voiceSource = { buffer: Buffer.from(silkBase64, 'base64') };
+              } else {
+                return { text: '❌ 无法将音频转码为 QQ 语音格式，请安装 ffmpeg 或改用 media_type=file 发送' };
+              }
+            }
+            await bot.sendVoice(target, voiceSource);
             break;
+          }
           case 'file':
             await bot.sendFile(target, mediaSource, {
               ...(fileName ? { fileName } : {}),

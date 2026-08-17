@@ -1,6 +1,6 @@
 {
   "name": "@yuxiaoyu8192/dsh-qqbot",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "QQ Bot IM channel plugin for deepseek-harness (dsh)",
   "type": "module",
   "main": "./dist/index.js",
@@ -82,5 +82,9 @@
     "LICENSE",
     "cordis.yml",
     "cordis.patch.yml"
-  ]
+  ],
+  "optionalDependencies": {
+    "mpg123-decoder": "^1.0.3",
+    "silk-wasm": "^3.7.1"
+  }
 }

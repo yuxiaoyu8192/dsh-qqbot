@@ -4,6 +4,12 @@
 
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
+## [0.5.3] - 2026-08-17
+
+### 新功能
+
+- 语音消息自动转码：`qq_send_media` 发送 `voice` 时，本地 `mp3` / `flac` 等音频会自动转成 QQ 可识别的语音格式；转码失败时提示安装 ffmpeg 或改用文件发送。
+
 ## [0.5.2] - 2026-08-17
 
 ### 修复
