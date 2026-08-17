@@ -4,6 +4,14 @@
 
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
+## [0.6.0] - 2026-08-17
+
+### 新功能
+
+- 新增 `qq_send_card` 卡片消息工具，支持 Markdown / Ark / Embed / 自定义模板、本地图片、按钮。
+- 新增按钮交互事件处理，按钮点击自动回传 Agent。
+- 语音消息自动转码支持 mp3 / flac 等常见音频格式。
+
 ## [0.5.3] - 2026-08-17
 
 ### 新功能
