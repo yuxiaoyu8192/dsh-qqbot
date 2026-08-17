@@ -15,6 +15,7 @@ import { buildUserAgent } from '../shared/index.js';
 import type { ImQQBotConfig } from '../config.js';
 import type { Logger } from '../types.js';
 import { setupMiddlewares } from './middleware-setup.js';
+import { registerQQMediaTools } from '../tools/qq-media.js';
 
 export async function bootstrapGateway(
   ctx: Context,
@@ -39,6 +40,9 @@ export async function bootstrapGateway(
 
   // ── 中间件链 ──
   setupMiddlewares(bot, config, manager, logger);
+
+  // ── 注入 QQ 媒体发送工具（供 Agent 直接发图/视频/语音/文件）──
+  registerQQMediaTools(ctx, manager, bot, logger);
 
   // ── 入站：经过中间件链后的消息交给 dsh agent ──
   bot.on('message', async (mCtx: MiddlewareContext) => {
