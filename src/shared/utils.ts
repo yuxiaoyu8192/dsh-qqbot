@@ -26,6 +26,13 @@ function readPluginVersion(): string {
 }
 
 /**
+ * 获取插件版本号
+ */
+export function getPluginVersion(): string {
+  return PLUGIN_VERSION;
+}
+
+/**
  * 构造 User-Agent 头
  *
  * 格式: dsh-qqbot/{version} (Node/{nodeVersion}; {platform})

@@ -4,6 +4,12 @@
 
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
+## [0.5.2] - 2026-08-17
+
+### 修复
+
+- `/bot-help` 和 `/bot-version` 不再显示旧版本号 `v0.1.0`，改为动态读取当前包版本。
+
 ## [0.5.1] - 2026-08-17
 
 ### 修复
