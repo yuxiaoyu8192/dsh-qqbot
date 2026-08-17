@@ -4,6 +4,12 @@
 
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
+## [0.5.1] - 2026-08-17
+
+### 修复
+
+- 修复发布包内 `cordis.patch.yml` 仍引用旧包名 `@tencent-connect/dsh-qqbot` 的问题，统一改为 `@yuxiaoyu8192/dsh-qqbot`。
+
 ## [0.5.0] - 2026-08-17
 
 ### 新功能

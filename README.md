@@ -1,4 +1,4 @@
-# @tencent-connect/dsh-qqbot
+# @yuxiaoyu8192/dsh-qqbot
 
 基于 [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) (dsh) 的 QQ Bot IM 插件，将 QQ 消息平台作为 dsh agent 的前端协议驱动。
 
@@ -19,7 +19,7 @@ QQ 用户 → QQ WebSocket → dsh-im-qqbot → ctx.agents → dsh agent loop �
 
 ```bash
 # 安装到 profile
-npx @deepseek-ai/dsh plugin --profile qqbot add @tencent-connect/dsh-qqbot
+npx @deepseek-ai/dsh plugin --profile qqbot add @yuxiaoyu8192/dsh-qqbot
 
 # 启动
 npx @deepseek-ai/dsh --profile qqbot

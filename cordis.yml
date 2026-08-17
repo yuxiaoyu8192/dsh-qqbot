@@ -55,7 +55,7 @@
 
 # ── QQ Bot IM 驱动 ──
 - id: im-qqbot
-  name: '@deepseek-ai/dsh-im-qqbot'
+  name: '@yuxiaoyu8192/dsh-qqbot'
   config:
     appId: ${QQBOT_APPID}
     appSecret: ${QQBOT_SECRET}
