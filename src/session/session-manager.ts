@@ -360,11 +360,15 @@ export class SessionManager {
   async remove(scope: ChatScope, peerId: string): Promise<void> {
     const key = this.sessionKey(scope, peerId);
     const record = this.sessions.get(key);
-    if (!record) return;
-    this.sessions.delete(key);
-    this.modelResolver.clearSessionId(key);
-    record.agent.cancel({ kind: 'user' });
-    await record.handle.dispose().catch(() => {});
+    if (record) {
+      this.sessions.delete(key);
+      record.agent.cancel({ kind: 'user' });
+      await record.handle.dispose().catch(() => {});
+    }
+
+    // 关键：重置后不能继续复用旧的确定性 sessionId，否则下次可能 resume 回旧上下文。
+    // 这里预先生成一个全新随机 sessionId，确保下一次消息创建的是全新会话。
+    this.modelResolver.setSessionId(key, SessionId(randomUUID()));
     this.logger.info(`session removed: key=${key}`);
   }
 

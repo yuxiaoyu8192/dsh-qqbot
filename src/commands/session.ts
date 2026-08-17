@@ -10,9 +10,9 @@ export function resetCommand({ manager }: CommandDeps): SlashCommand {
   return {
     name: ['bot-reset', 'bot-clear'],
     description: '重置当前会话（清除上下文）',
-    handler: (cmdCtx) => {
+    handler: async (cmdCtx) => {
       const { scope, peerId } = getScopePeer(cmdCtx);
-      void manager.remove(scope, peerId);
+      await manager.remove(scope, peerId);
       return '会话已重置 ✓';
     },
   };
@@ -23,9 +23,9 @@ export function newCommand({ manager }: CommandDeps): SlashCommand {
   return {
     name: 'bot-new',
     description: '开始新会话（清空上下文）',
-    handler: (cmdCtx) => {
+    handler: async (cmdCtx) => {
       const { scope, peerId } = getScopePeer(cmdCtx);
-      void manager.remove(scope, peerId);
+      await manager.remove(scope, peerId);
       return '已开启新会话 ✓';
     },
   };
