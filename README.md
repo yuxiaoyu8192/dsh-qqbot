@@ -13,6 +13,17 @@ QQ 用户 → QQ WebSocket → dsh-im-qqbot → ctx.agents → dsh agent loop �
                                        (assistant reply → QQ sendMarkdown)
 ```
 
+## 主要功能
+
+- 支持 C2C 私聊 / 群聊消息接入
+- Markdown 文本回复与 C2C 流式输出
+- 图片、视频、语音、文件发送
+- 语音消息自动转码（mp3 / flac 等常见音频）
+- 卡片消息：Markdown / Ark / Embed / 自定义模板 + 按钮
+- 按钮点击事件回传 Agent
+- 引用文件自动下载并传给 Agent
+- 会话管理、模型切换、访问控制、闲置回收
+
 ## 安装
 
 ### 方式一：手动执行
@@ -74,10 +85,58 @@ npx @deepseek-ai/dsh web --patch /path/to/dsh-qqbot/cordis.dev.yml
 
 | 命令 | 说明 |
 |------|------|
-| `/bot-reset` | 重置当前会话（清除上下文） |
+| `/bot-reset` / `/bot-clear` | 重置当前会话（清除上下文） |
+| `/bot-new` | 开启新会话 |
 | `/bot-model` | 查看或切换模型 |
 | `/bot-status` | 查看当前会话状态 |
 | `/bot-help` | 查看所有指令 |
+| `/bot-ping` | 连通性测试 |
+| `/bot-version` | 查看版本信息 |
+| `/bot-stop` | 中止当前生成（隐藏命令） |
+
+## Agent 工具
+
+插件会向 dsh Agent 注入以下工具：
+
+### `qq_send_media`
+
+发送图片、视频、语音或文件。
+
+```json
+{
+  "tool": "qq_send_media",
+  "media_type": "image",
+  "source": "/tmp/cat.png"
+}
+```
+
+语音消息支持自动转码：
+
+```json
+{
+  "tool": "qq_send_media",
+  "media_type": "voice",
+  "source": "/tmp/voice.mp3"
+}
+```
+
+### `qq_send_card`
+
+发送卡片消息，支持 Markdown / Ark / Embed / 自定义模板，可选图片和按钮。
+
+```json
+{
+  "tool": "qq_send_card",
+  "mode": "markdown",
+  "text": "这是一张卡片",
+  "image": "/tmp/card.png",
+  "buttons": [
+    { "label": "确认", "data": "confirm" }
+  ]
+}
+```
+
+按钮点击后会自动回传 Agent 处理。
 
 ## 核心模块
 
@@ -103,6 +162,13 @@ src/
 │   ├── utils.ts                # 通用函数
 │   ├── scope.ts                # scope/peer 提取
 │   └── send-helper.ts          # 分块发送
+├── tools/                      # Agent 工具
+│   ├── qq-media.ts             # 媒体发送工具
+│   └── qq-card.ts              # 卡片消息工具
+├── gateway/
+│   ├── bootstrap.ts            # 网关组装
+│   ├── interaction.ts          # 按钮交互事件
+│   └── middleware-setup.ts     # 中间件编排
 ├── commands/                   # 斜杠命令
 └── typings/                    # 外部模块声明
 ```

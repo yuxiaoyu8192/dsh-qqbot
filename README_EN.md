@@ -13,6 +13,17 @@ QQ User → QQ WebSocket → dsh-im-qqbot → ctx.agents → dsh agent loop → 
                                        (assistant reply → QQ sendMarkdown)
 ```
 
+## Features
+
+- C2C direct message and group message support
+- Markdown replies with C2C streaming output
+- Send images, videos, voice messages, and files
+- Automatic voice transcoding (mp3 / flac and other common audio)
+- Card messages: Markdown / Ark / Embed / custom templates + buttons
+- Button click events forwarded back to the agent
+- Quoted files are downloaded automatically and passed to the agent
+- Session management, model switching, access control, idle eviction
+
 ## Installation
 
 ### Method 1: Manual
@@ -74,10 +85,58 @@ npx @deepseek-ai/dsh web --patch /path/to/dsh-qqbot/cordis.dev.yml
 
 | Command | Description |
 |------|------|
-| `/bot-reset` | Reset the current session (clear context) |
+| `/bot-reset` / `/bot-clear` | Reset the current session (clear context) |
+| `/bot-new` | Start a new session |
 | `/bot-model` | View or switch model |
 | `/bot-status` | View current session status |
 | `/bot-help` | View all commands |
+| `/bot-ping` | Connectivity test |
+| `/bot-version` | Show version information |
+| `/bot-stop` | Stop current generation (hidden) |
+
+## Agent Tools
+
+The plugin injects the following tools into dsh agents:
+
+### `qq_send_media`
+
+Send an image, video, voice message, or file.
+
+```json
+{
+  "tool": "qq_send_media",
+  "media_type": "image",
+  "source": "/tmp/cat.png"
+}
+```
+
+Voice messages support automatic transcoding:
+
+```json
+{
+  "tool": "qq_send_media",
+  "media_type": "voice",
+  "source": "/tmp/voice.mp3"
+}
+```
+
+### `qq_send_card`
+
+Send card messages with Markdown / Ark / Embed / custom template support, optional image and buttons.
+
+```json
+{
+  "tool": "qq_send_card",
+  "mode": "markdown",
+  "text": "This is a card",
+  "image": "/tmp/card.png",
+  "buttons": [
+    { "label": "Confirm", "data": "confirm" }
+  ]
+}
+```
+
+Button clicks are automatically sent back to the agent.
 
 ## Core Modules
 
@@ -103,6 +162,13 @@ src/
 │   ├── utils.ts                # Common helpers
 │   ├── scope.ts                # scope/peer extraction
 │   └── send-helper.ts          # Chunked send
+├── tools/                      # Agent tools
+│   ├── qq-media.ts             # Media sending tool
+│   └── qq-card.ts              # Card message tool
+├── gateway/
+│   ├── bootstrap.ts            # Gateway bootstrap
+│   ├── interaction.ts          # Button interaction handler
+│   └── middleware-setup.ts     # Middleware setup
 ├── commands/                   # Slash commands
 └── typings/                    # External module declarations
 ```
