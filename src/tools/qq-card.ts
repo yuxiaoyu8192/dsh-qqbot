@@ -1,13 +1,14 @@
 /**
  * QQ 卡片消息工具 — 注入到 dsh tools 注册表，供 Agent 发送带图片和按钮的卡片消息。
  *
- * 使用 QQ Markdown + Inline Keyboard 实现：
- * - 卡片正文为 Markdown
- * - 可通过 image_url 插入图片
- * - 可通过 buttons 添加按钮
+ * 支持：
+ * - Markdown 正文
+ * - 远程图片 URL（Markdown 图片）
+ * - 本地图片（自动上传后以图片消息 + 文字 + 可选按钮发送）
+ * - 可选按钮（不传按钮时就是普通卡片/图文消息）
  */
 import type { Context } from '@deepseek-ai/cordis';
-import type { QQBot } from '@tencent-connect/qqbot-nodejs';
+import { MediaFileType, MsgType, type QQBot } from '@tencent-connect/qqbot-nodejs';
 import type { SessionManager } from '../session/index.js';
 import type { DshAgent } from '../session/types.js';
 import type { Logger } from '../types.js';
@@ -33,6 +34,7 @@ interface CardButtonArg {
 /** 卡片工具参数 */
 interface QQSendCardArgs {
   text?: string;
+  image?: string;
   image_url?: string;
   buttons?: CardButtonArg[];
 }
@@ -71,7 +73,9 @@ export function registerQQCardTools(
     name: 'qq_send_card',
     description: [
       'Send a card-style message with optional image and buttons to the current QQ conversation.',
-      'Use image_url for an https image URL, and buttons for clickable button rows.',
+      'Use image for a local image path or HTTPS image URL, and buttons for clickable button rows.',
+      'Local images are uploaded automatically before sending.',
+      'Buttons are optional; the card can be sent without buttons.',
       'Button clicks are delivered back to the agent as user messages.',
     ].join('\n'),
     parameters: toJsonSchema({
@@ -80,10 +84,15 @@ export function registerQQCardTools(
         required: true,
         description: 'Markdown text content of the card',
       },
+      image: {
+        type: 'string',
+        required: false,
+        description: 'Local image path or HTTPS image URL to show in the card',
+      },
       image_url: {
         type: 'string',
         required: false,
-        description: 'HTTPS image URL to show in the card',
+        description: 'HTTPS image URL to show in the card (deprecated alias of image)',
       },
       buttons: {
         type: 'array',
@@ -127,12 +136,8 @@ export function registerQQCardTools(
         return { text: '❌ 找不到当前 QQ 会话，无法发送卡片' };
       }
 
-      const imageUrl = args.image_url?.trim();
+      const image = args.image?.trim() ?? args.image_url?.trim();
       const buttons = Array.isArray(args.buttons) ? args.buttons.filter(b => b?.label && b?.data) : [];
-
-      const content = imageUrl
-        ? `![#400px #300px](${imageUrl})\n\n${text}`
-        : text;
 
       const keyboard = buttons.length > 0
         ? {
@@ -159,11 +164,31 @@ export function registerQQCardTools(
         : undefined;
 
       try {
-        await bot.sendMarkdown(
-          record.replyTarget,
-          content,
-          keyboard ? { keyboard } : undefined,
-        );
+        if (image && !/^https?:\/\//i.test(image)) {
+          // 本地图片：先上传，再以“图片 + 文字 + 可选按钮”的消息发送
+          const upload = await bot.uploadMedia({
+            target: record.replyTarget,
+            fileType: MediaFileType.IMAGE,
+            localPath: image,
+          });
+          await bot.send({
+            target: record.replyTarget,
+            msgType: MsgType.MEDIA,
+            media: { file_info: upload.file_info },
+            content: text,
+            ...(keyboard ? { keyboard } : {}),
+          });
+        } else {
+          // 远程图片 URL 或无图片：使用 Markdown 卡片
+          const content = image
+            ? `![#400px #300px](${image})\n\n${text}`
+            : text;
+          await bot.sendMarkdown(
+            record.replyTarget,
+            content,
+            keyboard ? { keyboard } : undefined,
+          );
+        }
         return { text: '✅ 卡片已发送' };
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
