@@ -14,5 +14,7 @@ declare module '@tencent-connect/qqbot-nodejs' {
   interface MiddlewareState {
     /** attachmentProcessor 下载到本地的 file 附件结果 */
     downloadedFiles?: DownloadedFile[];
+    /** attachmentProcessor 下载的引用消息 file 附件结果 */
+    downloadedQuoteFiles?: DownloadedFile[];
   }
 }

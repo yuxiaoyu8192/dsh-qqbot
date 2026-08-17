@@ -5,7 +5,7 @@
  * 下载失败不阻断消息（记录告警后放行），确保附件异常不影响正常文本处理。
  */
 import type { MiddlewareContext } from '@tencent-connect/qqbot-nodejs';
-import { downloadFileAttachments } from '../transport/attachment.js';
+import { downloadFileAttachments, type AttachmentLike, type DownloadedFile } from '../transport/attachment.js';
 import type { ImQQBotConfig } from '../config.js';
 import type { Logger, RawAttachment } from '../types.js';
 
@@ -15,9 +15,23 @@ export function attachmentProcessor(config: ImQQBotConfig, logger: Logger) {
     const cwd = config.cwd || process.cwd();
     const messageId = msg.messageId ?? 'unknown';
 
+    const state = ctx.state as {
+      quote?: { attachments?: AttachmentLike[] };
+      downloadedFiles?: DownloadedFile[];
+      downloadedQuoteFiles?: DownloadedFile[];
+    };
+    const quoteAttachments = state.quote?.attachments ?? [];
+
     try {
       const downloaded = await downloadFileAttachments(msg.attachments, cwd, messageId, logger);
+      const downloadedQuote = await downloadFileAttachments(
+        quoteAttachments,
+        cwd,
+        `${messageId}-quote`,
+        logger,
+      );
       ctx.state.downloadedFiles = downloaded;
+      ctx.state.downloadedQuoteFiles = downloadedQuote;
     } catch (err) {
       logger.warn(`im-qqbot: attachment download failed: ${err instanceof Error ? err.message : String(err)}`);
     }

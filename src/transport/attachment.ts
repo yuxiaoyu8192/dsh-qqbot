@@ -7,7 +7,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import * as dns from 'node:dns';
-import type { Logger, RawAttachment } from '../types.js';
+import type { Logger } from '../types.js';
 
 /** 下载大小上限（超过则跳过下载，仅保留路径提示） */
 const MAX_DOWNLOAD_BYTES = 20 * 1024 * 1024;
@@ -22,6 +22,15 @@ export interface DownloadedFile {
   localPath: string;
   /** 相对 cwd 的显示路径（@提及 / 工具访问用） */
   displayPath: string;
+}
+
+/** 可下载附件的最小结构（兼容当前消息附件与引用消息附件） */
+export interface AttachmentLike {
+  content_type?: string;
+  contentType?: string;
+  filename?: string;
+  size?: number;
+  url?: string;
 }
 
 /** 文件名净化：去路径、过滤危险字符，防止路径穿越 */
@@ -95,12 +104,12 @@ async function download(url: string, destPath: string, maxBytes: number): Promis
  * 下载失败不返回（由调用方回退描述），下载成功仅保留路径供模型用工具读取。
  */
 export async function downloadFileAttachments(
-  attachments: RawAttachment[] | undefined,
+  attachments: AttachmentLike[] | undefined,
   cwd: string,
   messageId: string,
   logger: Logger,
 ): Promise<DownloadedFile[]> {
-  const files = (attachments ?? []).filter(a => a.content_type === 'file' && a.url);
+  const files = (attachments ?? []).filter(a => (a.content_type ?? a.contentType) === 'file' && a.url);
   if (files.length === 0) return [];
 
   const dir = join(cwd, '.qqbot', messageId);
@@ -108,26 +117,27 @@ export async function downloadFileAttachments(
 
   const results: DownloadedFile[] = [];
   for (const file of files) {
-    const safeName = sanitizeFilename(file.filename);
+    const safeName = sanitizeFilename(file.filename ?? 'attachment');
     const localPath = join(dir, safeName);
     const displayPath = `.qqbot/${messageId}/${safeName}`;
+    const size = file.size ?? 0;
 
-    if (file.size > MAX_DOWNLOAD_BYTES) {
-      logger.debug(`im-qqbot: skip download (${file.size}B too large): ${file.filename}`);
-      results.push({ filename: file.filename, localPath, displayPath });
+    if (size > MAX_DOWNLOAD_BYTES) {
+      logger.debug(`im-qqbot: skip download (${size}B too large): ${file.filename ?? 'attachment'}`);
+      results.push({ filename: file.filename ?? 'attachment', localPath, displayPath });
       continue;
     }
 
     let bytes: number;
     try {
-      bytes = await download(file.url, localPath, MAX_DOWNLOAD_BYTES);
+      bytes = await download(file.url!, localPath, MAX_DOWNLOAD_BYTES);
     } catch (err) {
-      logger.warn(`im-qqbot: download failed: ${file.filename} — ${err instanceof Error ? err.message : String(err)}`);
+      logger.warn(`im-qqbot: download failed: ${file.filename ?? 'attachment'} — ${err instanceof Error ? err.message : String(err)}`);
       continue; // 下载失败不加入结果，由 buildDynamicCtx 回退为描述
     }
-    logger.debug(`im-qqbot: attachment downloaded: ${file.filename} (${formatSize(bytes)}) → ${displayPath}`);
+    logger.debug(`im-qqbot: attachment downloaded: ${file.filename ?? 'attachment'} (${formatSize(bytes)}) → ${displayPath}`);
 
-    results.push({ filename: file.filename, localPath, displayPath });
+    results.push({ filename: file.filename ?? 'attachment', localPath, displayPath });
   }
 
   return results;

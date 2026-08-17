@@ -35,7 +35,7 @@ interface ProcessedMessage {
 interface ResolvedQuote {
   text?: string;
   entry?: { senderId?: string; content?: string };
-  attachments?: { contentType?: string; url?: string; filename?: string; asrText?: string }[];
+  attachments?: { contentType?: string; content_type?: string; url?: string; filename?: string; asrText?: string }[];
 }
 
 interface HistoryEntry {
@@ -57,6 +57,7 @@ interface MiddlewareState {
   mention?: MentionState;
   processedAttachments?: ProcessedAttachment[];
   downloadedFiles?: DownloadedFile[];
+  downloadedQuoteFiles?: DownloadedFile[];
   [key: string]: unknown;
 }
 
@@ -99,9 +100,10 @@ export async function handleInbound(
 
   // ── 读取中间件已下载的文件（attachmentProcessor 写入 state.downloadedFiles） ──
   const downloaded = mwState.downloadedFiles ?? [];
+  const downloadedQuote = mwState.downloadedQuoteFiles ?? [];
 
   // ── 组装 agentBody（对齐 openclaw-qqbot body-assembler） ──
-  const agentBody = assembleAgentBody(msg, mwState, scope, logger, downloaded);
+  const agentBody = assembleAgentBody(msg, mwState, scope, logger, downloaded, downloadedQuote);
 
   if (!agentBody) return;
 
@@ -146,6 +148,7 @@ function assembleAgentBody(
   scope: ChatScope,
   logger: Logger,
   downloaded: DownloadedFile[],
+  downloadedQuote: DownloadedFile[],
 ): string | null {
   const userContent = buildUserContent(msg, state, logger);
 
@@ -157,7 +160,7 @@ function assembleAgentBody(
   const wasMentioned = state.mention?.wasMentioned ?? false;
   const userMessage = buildUserMessage(userContent, quotePart, msg.senderId, msg.senderName, isGroup, wasMentioned);
 
-  const dynamicCtx = buildDynamicCtx(msg, state, downloaded);
+  const dynamicCtx = buildDynamicCtx(msg, state, downloaded, downloadedQuote);
 
   const base = dynamicCtx ? `${dynamicCtx}${userMessage}` : userMessage;
   const agentBody = buildAgentBody(base, state.history, isGroup, wasMentioned);
@@ -227,12 +230,15 @@ function buildUserMessage(
 /**
  * Layer 4: 媒体元数据上下文
  */
-function buildDynamicCtx(msg: ProcessedMessage, state: MiddlewareState, downloaded: DownloadedFile[]): string {
+function buildDynamicCtx(
+  msg: ProcessedMessage,
+  state: MiddlewareState,
+  downloaded: DownloadedFile[],
+  downloadedQuote: DownloadedFile[],
+): string {
   const lines: string[] = [];
 
-  if (!msg.attachments || msg.attachments.length === 0) return '';
-
-  const images = msg.attachments.filter(a => a.content_type === 'image');
+  const images = msg.attachments?.filter(a => a.content_type === 'image') ?? [];
   if (images.length > 0) {
     const urls = images.map(a => a.url).filter(Boolean);
     if (urls.length > 0) {
@@ -240,7 +246,7 @@ function buildDynamicCtx(msg: ProcessedMessage, state: MiddlewareState, download
     }
   }
 
-  const voices = msg.attachments.filter(a => a.content_type === 'voice');
+  const voices = msg.attachments?.filter(a => a.content_type === 'voice') ?? [];
   if (voices.length > 0) {
     const asrTexts = voices.map(a => a.asr_refer_text).filter(Boolean);
     if (asrTexts.length > 0) {
@@ -254,12 +260,12 @@ function buildDynamicCtx(msg: ProcessedMessage, state: MiddlewareState, download
     }
   }
 
-  const videos = msg.attachments.filter(a => a.content_type === 'video');
+  const videos = msg.attachments?.filter(a => a.content_type === 'video') ?? [];
   if (videos.length > 0) {
     lines.push(`- Videos: ${videos.map(a => a.filename).join(', ')}`);
   }
 
-  const files = msg.attachments.filter(a => a.content_type === 'file');
+  const files = msg.attachments?.filter(a => a.content_type === 'file') ?? [];
   if (files.length > 0) {
     for (const file of files) {
       const d = downloaded.find(x => x.filename === file.filename);
@@ -271,16 +277,25 @@ function buildDynamicCtx(msg: ProcessedMessage, state: MiddlewareState, download
     }
   }
 
-  if (lines.length === 0) return '';
-
   const quoteAttachments = state.quote?.attachments;
   if (quoteAttachments && quoteAttachments.length > 0) {
     lines.push('[Reference attachments]');
     for (const qa of quoteAttachments) {
-      const label = qa.asrText ? `Voice: ${qa.asrText}` : (qa.filename ?? qa.contentType ?? 'attachment');
-      lines.push(`  - ${label}`);
+      if ((qa.contentType ?? qa.content_type) === 'file') {
+        const d = downloadedQuote.find(x => x.filename === qa.filename);
+        if (d) {
+          lines.push(`  - File: ${qa.filename ?? 'attachment'} → ${d.displayPath}`);
+        } else {
+          lines.push(`  - File: ${qa.filename ?? 'attachment'}`);
+        }
+      } else {
+        const label = qa.asrText ? `Voice: ${qa.asrText}` : (qa.filename ?? qa.contentType ?? 'attachment');
+        lines.push(`  - ${label}`);
+      }
     }
   }
+
+  if (lines.length === 0) return '';
 
   return lines.join('\n') + '\n\n';
 }
