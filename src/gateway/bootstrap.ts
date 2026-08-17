@@ -16,6 +16,8 @@ import type { ImQQBotConfig } from '../config.js';
 import type { Logger } from '../types.js';
 import { setupMiddlewares } from './middleware-setup.js';
 import { registerQQMediaTools } from '../tools/qq-media.js';
+import { registerQQCardTools } from '../tools/qq-card.js';
+import { registerInteractionHandler } from './interaction.js';
 
 export async function bootstrapGateway(
   ctx: Context,
@@ -43,6 +45,7 @@ export async function bootstrapGateway(
 
   // ── 注入 QQ 媒体发送工具（供 Agent 直接发图/视频/语音/文件）──
   registerQQMediaTools(ctx, manager, bot, logger);
+  registerQQCardTools(ctx, manager, bot, logger);
 
   // ── 入站：经过中间件链后的消息交给 dsh agent ──
   bot.on('message', async (mCtx: MiddlewareContext) => {
@@ -52,6 +55,9 @@ export async function bootstrapGateway(
     }
     await handleInbound(msg, manager, config, logger, mCtx.state);
   });
+
+  // ── 交互事件：按钮点击 → Agent ──
+  registerInteractionHandler(bot, manager, logger);
 
   // ── 出站：dsh session/event → QQ 消息 ──
   // 获取 tools 服务（工具结果结构化展示，参考 dsh-TUI presentResult），可选
