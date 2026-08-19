@@ -23,6 +23,7 @@ QQ 用户 → QQ WebSocket → dsh-im-qqbot → ctx.agents → dsh agent loop �
 - 按钮点击事件回传 Agent
 - 引用文件自动下载并传给 Agent
 - 会话管理、模型切换、访问控制、闲置回收
+- 出站消息自动排队，降低触发 QQ 频控的概率
 
 ## 安装
 
@@ -85,14 +86,14 @@ npx @deepseek-ai/dsh web --patch /path/to/dsh-qqbot/cordis.dev.yml
 
 | 命令 | 说明 |
 |------|------|
-| `/bot-reset` / `/bot-clear` | 重置当前会话（清除上下文） |
-| `/bot-new` | 开启新会话 |
-| `/bot-model` | 查看或切换模型 |
-| `/bot-status` | 查看当前会话状态 |
-| `/bot-help` | 查看所有指令 |
+| `/new`（别名 `/reset` `/clear`） | 开始新会话（清空上下文） |
+| `/compact` | 压缩会话历史（摘要替换旧记录，保留上下文） |
+| `/model` | 查看或切换模型 |
+| `/stop` | 中止当前生成 |
 | `/bot-ping` | 连通性测试 |
 | `/bot-version` | 查看版本信息 |
-| `/bot-stop` | 中止当前生成（隐藏命令） |
+| `/bot-status` | 查看当前会话状态 |
+| `/bot-help` | 查看所有指令 |
 
 ## Agent 工具
 

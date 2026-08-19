@@ -23,6 +23,7 @@ QQ User → QQ WebSocket → dsh-im-qqbot → ctx.agents → dsh agent loop → 
 - Button click events forwarded back to the agent
 - Quoted files are downloaded automatically and passed to the agent
 - Session management, model switching, access control, idle eviction
+- Outbound message queue to reduce the chance of hitting QQ rate limits
 
 ## Installation
 
@@ -85,14 +86,14 @@ npx @deepseek-ai/dsh web --patch /path/to/dsh-qqbot/cordis.dev.yml
 
 | Command | Description |
 |------|------|
-| `/bot-reset` / `/bot-clear` | Reset the current session (clear context) |
-| `/bot-new` | Start a new session |
-| `/bot-model` | View or switch model |
+| `/new` (aliases `/reset` `/clear`) | Start a new session (clear context) |
+| `/compact` | Compact session history (replace old records with a summary) |
+| `/model` | View or switch model |
+| `/stop` | Abort the current generation |
+| `/bot-ping` | Connectivity test |
+| `/bot-version` | View version info |
 | `/bot-status` | View current session status |
 | `/bot-help` | View all commands |
-| `/bot-ping` | Connectivity test |
-| `/bot-version` | Show version information |
-| `/bot-stop` | Stop current generation (hidden) |
 
 ## Agent Tools
 

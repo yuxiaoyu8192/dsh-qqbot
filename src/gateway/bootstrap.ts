@@ -18,6 +18,8 @@ import { setupMiddlewares } from './middleware-setup.js';
 import { registerQQMediaTools } from '../tools/qq-media.js';
 import { registerQQCardTools } from '../tools/qq-card.js';
 import { registerInteractionHandler } from './interaction.js';
+import { startMediaCleanup } from '../media/media-cleaner.js';
+import { ensureVisionInputModal, registerDescribeImageTool } from '../media/vision-tool.js';
 
 export async function bootstrapGateway(
   ctx: Context,
@@ -91,6 +93,15 @@ export async function bootstrapGateway(
   bot.on('ready', () => {
     console.log(`[im-qqbot] Bot ready! appId=${config.appId}`);
   });
+
+  // ── 富媒体过期清理 ──
+  if (config.media.enabled) {
+    startMediaCleanup(ctx, config.media.ttlHours, logger);
+  }
+
+  // ── 视觉工具注册（qqbot_describe_image，复用 dsh llm + attachments） ──
+  ensureVisionInputModal(config.vision, logger);
+  registerDescribeImageTool(ctx, config.vision, logger);
 
   // ── 生命周期 ──
   (ctx as unknown as { effect(fn: () => (() => Promise<void>) | void, name?: string): void })

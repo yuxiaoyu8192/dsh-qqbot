@@ -9,6 +9,7 @@ import type { ImQQBotConfig } from '../config.js';
 import type { Logger } from '../types.js';
 import { chunkMarkdownText } from './chunker.js';
 import { OutboundBuffer, type QQBotSender } from './outbound-buffer.js';
+import { OutboundQueue } from './outbound-queue.js';
 import { formatToolResult, type ToolsRegistryLike, type ToolResultData } from './tool-presenter.js';
 import {
   parseEvent,
@@ -47,14 +48,24 @@ const SILENT_TURN_ERROR_CODES = new Set(['STREAM_CLOSED']);
 class OutboundRouter {
   private readonly buffers = new Map<string, OutboundBuffer>();
   private readonly toolCalls = new Map<string, ToolCallRecord>();
+  private readonly outboundQueue = new OutboundQueue();
+  private readonly bot: QQBotSender;
 
   public constructor(
     private readonly manager: SessionManager,
-    private readonly bot: QQBotSender,
+    bot: QQBotSender,
     private readonly config: ImQQBotConfig,
     private readonly logger: Logger,
     private readonly toolsRegistry: ToolsRegistryLike | undefined,
-  ) {}
+  ) {
+    // 将 sendMarkdown 放入统一出站队列，避免多条/多 chunk 消息短时间打爆频控。
+    // openStream 是单条流式会话，不需要进入该队列。
+    this.bot = {
+      sendMarkdown: (target, content) =>
+        this.outboundQueue.enqueue(() => bot.sendMarkdown(target, content)),
+      openStream: (target) => bot.openStream(target),
+    };
+  }
 
   /** 事件分发入口 */
   public route(session: SessionLike, raw: RawSessionEvent): void {
@@ -165,7 +176,7 @@ class OutboundRouter {
     this.logger.debug(`im-qqbot: turn/end sessionId=${sessionId}`);
   }
 
-  /** 统一发送：切分 + 逐 chunk 发送 + 错误记录 */
+  /** 统一发送：切分 + 逐 chunk 发送（sendMarkdown 已通过 bot 包装进入出站队列） */
   private async send(record: SessionRecord, text: string, tag: string): Promise<void> {
     const chunks = chunkMarkdownText(text, this.config.textChunkLimit);
     for (const chunk of chunks) {
